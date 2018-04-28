@@ -1,0 +1,29 @@
+arm-gcc:
+https://launchpad.net/gcc-arm-embedded/
+https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
+
+Linux下如何搭建stm32开发环境
+http://www.stmcu.org/module/forum/thread-606548-1-1.html
+
+stm32cubemx：http://www.st.com/content/st_com/en/products/development-tools/software-development-tools/stm32-software-development-tools/stm32-configurators-and-code-generators/stm32cubemx.html
+
+sw4stm32：http://www.openstm32.org/Downloading+the+System+Workbench+for+STM32+installer
+zhangtao2017 aaaaaa@
+
+stm32cubemx study
+http://blog.csdn.net/ybhuangfugui/article/category/6376830
+
+stm32 for mac
+brew install libusb libusb-compat
+brew install pkg-config
+brew install autoconf automake libtool
+
+git clone https://github.com/texane/stlink stlink
+cd stlink
+mkdir build
+cd buile
+cmake
+make
+
+
+
