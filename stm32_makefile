@@ -1,7 +1,8 @@
 
 Q		:= @
 
-PREFIX	:= ~/arm_gcc/gcc-arm-none-eabi-6-2017-q2-update/bin/arm-none-eabi
+#PREFIX	:= ~/arm_gcc/gcc-arm-none-eabi-6-2017-q2-update/bin/arm-none-eabi
+PREFIX	:= arm-none-eabi
 
 LDSCRIPT := STM32F407VETx_FLASH.ld
 
