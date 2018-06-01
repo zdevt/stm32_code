@@ -1,0 +1,144 @@
+
+Q		:= @
+
+PREFIX	:= arm-none-eabi
+
+LDSCRIPT := STM32F407VETx_FLASH.ld
+
+DEFINES += -D STM32F407xx
+DEFINES += -D USE_HAL_DRIVER
+DEFINES += -D __weak="__attribute__((weak))"
+DEFINES += -D __packed="__attribute__((__packed__))"
+
+TARGET := $(shell basename `pwd`)
+
+OPT    := -O0
+CSTD   := -std=c11
+CXXSTD := -std=c++11
+
+FP_FLAGS += -mfpu=fpv4-sp-d16
+FP_FLAGS += -mfloat-abi=softfp
+
+ARCH_FLAGS += -mthumb
+ARCH_FLAGS += -mcpu=cortex-m4
+
+INC_FILES := $(shell find . -name "*.h")
+INC_DIRS  := $(sort $(dir $(INC_FILES)))
+INC_FLAGS := $(patsubst %,-I%, $(INC_DIRS))
+
+CWARN_FLAGS += -Wall -Wshadow
+#CWARN_FLAGS += -Wundef  -Wextra  -Wredundant-decls
+CWARN_FLAGS += -fno-common -ffunction-sections -fdata-sections
+CWARN_FLAGS += -Wimplicit-function-declaration  
+#CWARN_FLAGS += -Wmissing-prototypes
+CWARN_FLAGS += -Wstrict-prototypes
+
+CXXWARN_CXXFLAGS += -Wall -Wshadow
+#CXXWARN_CXXFLAGS += -Wundef  -Wextra  -Wredundant-decls
+CXXWARN_CXXFLAGS += -fno-common -ffunction-sections -fdata-sections
+#CXXWARN_CXXFLAGS += -Weffc++
+CXXWARN_CXXFLAGS += -Wno-write-strings
+
+#LDLIBS		+= -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
+LDLIBS += -Wl,--start-group -lc -lgcc -lstdc++_nano -lnosys -lg_nano -Wl,--end-group
+
+AS_SRC := $(shell find . -name '*.s')  
+AS_OBJ := $(AS_SRC:%.s=%.o)
+
+PROJ_EXCLUDE_FILES := ./Src/main.c
+C_SRC := $(shell find . -name '*.c')  
+C_SRC := $(filter-out $(PROJ_EXCLUDE_FILES) ,$(C_SRC))
+C_OBJ := $(C_SRC:%.c=%.o)  
+
+CXX_SRC := $(shell find . -name '*.cpp')  
+CXX_OBJ := $(CXX_SRC:%.cpp=%.o)
+
+
+# C flags
+CFLAGS := $(OPT) $ $(CSTD) $(INC_FLAGS) $(FP_FLAGS) 
+CFLAGS += $(DEFINES) $(ARCH_FLAGS) $(CWARN_FLAGS) -g
+
+# C++ flags
+CXXFLAGS := $(OPT) $ $(CXXSTD) $(INC_FLAGS) $(FP_FLAGS) 
+CXXFLAGS += $(DEFINES) $(ARCH_FLAGS) $(CXXWARN_CXXFLAGS) -g 
+
+# Linker flags
+LDFLAGS		:= --static
+LDFLAGS		+= -Wl,-Map=$(TARGET).map -Wl,--gc-sections
+LDFLAGS		+= -T$(LDSCRIPT) $(ARCH_FLAGS) $(LDLIBS)
+
+# OBJ
+OBJ = $(AS_OBJ) $(C_OBJ) $(CXX_OBJ)
+
+CC		:= $(PREFIX)-gcc
+CXX		:= $(PREFIX)-g++
+LD		:= $(PREFIX)-g++
+AR		:= $(PREFIX)-ar
+AS		:= $(PREFIX)-as
+OBJCOPY	:= $(PREFIX)-objcopy
+OBJDUMP	:= $(PREFIX)-objdump
+GDB		:= $(PREFIX)-gdb
+
+.SUFFIXES: .elf .bin .hex .list .map .images
+.SECONDEXPANSION:
+.SECONDARY:
+
+all: bin
+
+elf: $(TARGET).elf
+bin: $(TARGET).bin
+hex: $(TARGET).hex
+list: $(TARGET).list
+images: $(TARGET).images
+
+%.images: %.bin %.hex %.list %.map
+	@printf "*** $* images generated ***\n"
+	
+%.bin: %.elf          
+	@printf "  OBJCOPY $(*).bin\n"
+	$(Q)$(OBJCOPY) -Obinary $(*).elf $(*).bin
+	
+%.hex: %.elf
+	@printf "  OBJCOPY $(*).hex\n"
+	$(Q)$(OBJCOPY) -Oihex $(*).elf $(*).hex
+	
+%.list: %.elf
+	@printf "  OBJDUMP $(*).list\n"
+	$(Q)$(OBJDUMP) -S $(*).elf > $(*).list
+	
+%.elf %.map: $(OBJ) $(LDSCRIPT)
+	@printf "  LD      $(TARGET).elf\n"
+	$(Q)$(CXX) $(CXXFLAGS) -o ./Src/main.o -c ./Src/main.c
+	$(Q)$(LD) $(OBJ) ./Src/main.o $(LDFLAGS) -o $(TARGET).elf
+	
+$(AS_OBJ): %.o:%.s
+	@printf "  AS      $(*).cpp\n"
+	$(Q)$(CC) $(ARCH_FLAGS) $(FP_FLAGS) -g -Wa,--no-warn -x assembler-with-cpp -o $(*).o -c $(*).s
+	
+$(C_OBJ): %.o:%.c
+	@printf "  CC      $(*).c\n"
+	$(Q)$(CC) $(CFLAGS) -o $(*).o -c $(*).c
+	
+$(CXX_OBJ): %.o:%.cpp
+	@printf "  CXX     $(*).cpp\n"
+	$(Q)$(CXX) $(CXXFLAGS) -o $(*).o -c $(*).cpp
+	
+clean:
+	$(Q)$(RM) $(shell find . -name '*.o' -o -name '*.d' -o -name '*.elf' -o -name '*.bin') 
+	$(Q)$(RM) $(shell find . -name '*.hex' -o -name '*.srec' -o -name '*.list' -o -name '*.map') 
+	$(Q)$(RM) $(shell find . -name 'generated.*' -o -name '*.srec' -o -name '*.list' -o -name '*.map') 
+
+OOCD		 := openocd
+OOCDFLAGS  += -f openocd.cfg
+
+flash: $(TARGET).hex
+	@printf "  OPEN_OCD FLASH $<\n"
+	$(Q)$(OOCD) $(OOCDFLAGS) -c "program $(TARGET).hex verify reset exit" 
+
+debug: $(TARGET).elf
+	@printf "  GDB DEBUG $<\n"
+	$(Q)$(GDB) -iex 'target extended | $(OOCD) $(OOCDFLAGS) -c "gdb_port pipe"' \
+	-iex 'monitor reset halt' -ex 'load'  $(TARGET).elf
+	
+.PHONY: images clean elf bin hex list flash debug
+
