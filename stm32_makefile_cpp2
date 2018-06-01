@@ -39,8 +39,8 @@ CXXWARN_CXXFLAGS += -fno-common -ffunction-sections -fdata-sections
 #CXXWARN_CXXFLAGS += -Weffc++
 CXXWARN_CXXFLAGS += -Wno-write-strings
 
-#LDLIBS		+= -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
-LDLIBS += -Wl,--start-group -lc -lgcc -lstdc++_nano -lnosys -lg_nano -Wl,--end-group
+#LDLIBS += -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
+LDLIBS  += -Wl,--start-group -lc -lgcc -lnosys -lg_nano -lstdc++_nano -Wl,--end-group
 
 AS_SRC := $(shell find . -name '*.s')  
 AS_OBJ := $(AS_SRC:%.s=%.o)
