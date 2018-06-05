@@ -1,3 +1,4 @@
+
 Q		:= @
 
 PREFIX	:= arm-none-eabi
@@ -25,22 +26,37 @@ INC_FILES := $(shell find . -name "*.h")
 INC_DIRS  := $(sort $(dir $(INC_FILES)))
 INC_FLAGS := $(patsubst %,-I%, $(INC_DIRS))
 
+CWARN_FLAGS += -Wall -Wshadow
+#CWARN_FLAGS += -Wundef  -Wextra  -Wredundant-decls
+CWARN_FLAGS += -fno-common -ffunction-sections -fdata-sections
+CWARN_FLAGS += -Wimplicit-function-declaration  
+#CWARN_FLAGS += -Wmissing-prototypes
+CWARN_FLAGS += -Wstrict-prototypes
 
 CXXWARN_CXXFLAGS += -Wall -Wshadow
 #CXXWARN_CXXFLAGS += -Wundef  -Wextra  -Wredundant-decls
-CXXWARN_CXXFLAGS += -fno-common -ffunction-sections -fdata-sections -fpermissive
-CXXWARN_CXXFLAGS += -Weffc++ -Wno-write-strings
+CXXWARN_CXXFLAGS += -fno-common -ffunction-sections -fdata-sections
+#CXXWARN_CXXFLAGS += -Weffc++
+CXXWARN_CXXFLAGS += -Wno-write-strings
 
-LDLIBS += -Wl,--start-group -lc -lgcc -lstdc++_nano -lnosys -lg_nano -Wl,--end-group
+#LDLIBS += -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
+LDLIBS  += -Wl,--start-group -lc -lgcc -lnosys -lg_nano -lstdc++_nano -Wl,--end-group
 
-AS_SRC := $(shell find ./ -name '*.s')  
+AS_SRC := $(shell find . -name '*.s')  
 AS_OBJ := $(AS_SRC:%.s=%.o)
 
-C_SRC := $(shell find ./ -name '*.c')  
+PROJ_EXCLUDE_FILES := ./Src/main.c
+C_SRC := $(shell find . -name '*.c')  
+C_SRC := $(filter-out $(PROJ_EXCLUDE_FILES) ,$(C_SRC))
 C_OBJ := $(C_SRC:%.c=%.o)  
 
-CXX_SRC := $(shell find ./ -name '*.cpp')  
+CXX_SRC := $(shell find . -name '*.cpp')  
 CXX_OBJ := $(CXX_SRC:%.cpp=%.o)
+
+
+# C flags
+CFLAGS := $(OPT) $ $(CSTD) $(INC_FLAGS) $(FP_FLAGS) 
+CFLAGS += $(DEFINES) $(ARCH_FLAGS) $(CWARN_FLAGS) -g
 
 # C++ flags
 CXXFLAGS := $(OPT) $ $(CXXSTD) $(INC_FLAGS) $(FP_FLAGS) 
@@ -92,15 +108,16 @@ images: $(TARGET).images
 	
 %.elf %.map: $(OBJ) $(LDSCRIPT)
 	@printf "  LD      $(TARGET).elf\n"
-	$(Q)$(LD) $(OBJ) $(LDFLAGS) -o $(TARGET).elf
+	$(Q)$(CXX) $(CXXFLAGS) -o ./Src/main.o -c ./Src/main.c
+	$(Q)$(LD) $(OBJ) ./Src/main.o $(LDFLAGS) -o $(TARGET).elf
 	
 $(AS_OBJ): %.o:%.s
 	@printf "  AS      $(*).cpp\n"
-	$(Q)$(CXX) $(ARCH_FLAGS) $(FP_FLAGS) -g -Wa,--no-warn -x assembler-with-cpp -o $(*).o -c $(*).s
+	$(Q)$(CC) $(ARCH_FLAGS) $(FP_FLAGS) -g -Wa,--no-warn -x assembler-with-cpp -o $(*).o -c $(*).s
 	
 $(C_OBJ): %.o:%.c
-	@printf "  CXX      $(*).c\n"
-	$(Q)$(CXX) $(CXXFLAGS) -o $(*).o -c $(*).c
+	@printf "  CC      $(*).c\n"
+	$(Q)$(CC) $(CFLAGS) -o $(*).o -c $(*).c
 	
 $(CXX_OBJ): %.o:%.cpp
 	@printf "  CXX     $(*).cpp\n"
