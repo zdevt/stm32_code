@@ -1,0 +1,2 @@
+arm-none-eabi-objcopy -I ihex -O binary dnew.hex dnew.bin
+
